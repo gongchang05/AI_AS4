@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SnackBurn — 군것질, 똑똑하게 태우자</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- NAV -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo">🔥 SnackBurn</a>
+    <button class="nav-toggle" onclick="toggleNav()" aria-label="메뉴">☰</button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html" class="active">홈</a></li>
+      <li><a href="tracker.html">트래커</a></li>
+      <li><a href="workout.html">운동</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <p class="hero-eyebrow">마음 챙김 군것질</p>
+      <h1 class="hero-title">그 군것질,<br><span class="accent">생각보다 비쌉니다.</span></h1>
+      <p class="hero-sub">
+        식사 외에 먹은 군것질을 기록해보세요. SnackBurn이 AI로 칼로리를 계산하고,
+        어떻게 태울 수 있는지 알려드려요. 죄책감 없이, 그저 알아차림으로.
+      </p>
+      <a href="tracker.html" class="btn-primary">기록 시작하기 →</a>
+    </div>
+
+    <!-- TODAY SUMMARY WIDGET -->
+    <div class="today-widget">
+      <p class="tw-label">오늘의 군것질</p>
+      <div class="tw-calorie">
+        <span class="tw-num" id="todayCalories">0</span>
+        <span class="tw-unit">kcal</span>
+      </div>
+      <p class="tw-count" id="todayCount">아직 기록이 없어요</p>
+      <a href="workout.html" class="tw-link" id="twLink">태우는 방법 보기 →</a>
+    </div>
+  </section>
+
+  <!-- CONCEPT -->
+  <section class="concept">
+    <h2 class="section-title">SnackBurn 사용법</h2>
+    <div class="concept-grid">
+      <div class="concept-card">
+        <div class="concept-emoji">🍫</div>
+        <div class="concept-step">1단계</div>
+        <h3>기록</h3>
+        <p>식사 외에 먹은 군것질을 입력하세요 — 과자, 음료, 초콜릿 무엇이든.</p>
+      </div>
+      <div class="concept-card">
+        <div class="concept-emoji">🔢</div>
+        <div class="concept-step">2단계</div>
+        <h3>확인</h3>
+        <p>AI가 칼로리를 즉시 계산해서 오늘의 누적 합계에 더해줍니다.</p>
+      </div>
+      <div class="concept-card">
+        <div class="concept-emoji">🏃</div>
+        <div class="concept-step">3단계</div>
+        <h3>소모</h3>
+        <p>걷기, 달리기, 자전거를 얼마나 하면 되는지 운동 플랜을 받아보세요.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>똑똑하게 군것질할 준비됐나요?</h2>
+    <a href="tracker.html" class="btn-primary">첫 군것질 기록하기 →</a>
+  </section>
+
+  <footer class="footer">
+    <p>SnackBurn · Claude AI로 제작 · 인공지능 프로그래밍 입문 2026</p>
+    <p class="disclaimer">칼로리 및 운동량은 AI가 추정한 참고용 근사치이며, 의학적·영양학적 조언이 아닙니다.</p>
+  </footer>
+
+  <script src="storage.js"></script>
+  <script>
+    function toggleNav() {
+      document.getElementById('navLinks').classList.toggle('open');
+    }
+
+    // 오늘 요약 불러오기
+    (function loadSummary() {
+      const log = SnackStore.getToday();
+      const total = log.reduce((sum, s) => sum + (s.calories || 0), 0);
+      document.getElementById('todayCalories').textContent = total;
+      const countEl = document.getElementById('todayCount');
+      const linkEl = document.getElementById('twLink');
+      if (log.length === 0) {
+        countEl.textContent = '아직 기록이 없어요';
+        linkEl.style.display = 'none';
+      } else {
+        countEl.textContent = `군것질 ${log.length}개 기록됨`;
+        linkEl.style.display = 'inline-block';
+      }
+    })();
+  </script>
+</body>
+</html>
