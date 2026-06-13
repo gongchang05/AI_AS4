@@ -38,12 +38,6 @@
       <a href="tracker.html" class="btn-primary">트래커로 가기 →</a>
     </div>
 
-    <!-- LOADING -->
-    <div class="loading-box hidden" id="loadingBox">
-      <div class="spinner"></div>
-      <p>운동 플랜을 짜는 중…</p>
-    </div>
-
     <!-- WORKOUT PLAN -->
     <section class="workout-grid hidden" id="workoutGrid"></section>
 
@@ -54,7 +48,7 @@
 
   <footer class="footer">
     <p>SnackBurn · Claude AI로 제작 · 인공지능 프로그래밍 입문 2026</p>
-    <p class="disclaimer">추정치는 평균 성인 기준 AI 근사치이며, 개인 맞춤 운동 조언이 아닙니다.</p>
+    <p class="disclaimer">추정치는 평균 성인(약 70kg) 기준 근사치이며, 개인 맞춤 운동 조언이 아닙니다.</p>
   </footer>
 
   <script src="storage.js"></script>
@@ -65,7 +59,21 @@
     function show(id) { document.getElementById(id).classList.remove('hidden'); }
     function hide(id) { document.getElementById(id).classList.add('hidden'); }
 
-    async function loadWorkout() {
+    // ── 운동별 분당 소모 칼로리 (평균 성인 70kg 기준, MET 공식 근사) ──
+    // 분당 소모 = MET × 3.5 × 체중(kg) / 200
+    const BODY_WEIGHT = 70;
+    const EXERCISES = [
+      { name: '빠르게 걷기', emoji: '🚶', met: 4.3 },
+      { name: '조깅',       emoji: '🏃', met: 7.0 },
+      { name: '자전거 타기', emoji: '🚴', met: 6.0 },
+      { name: '줄넘기',     emoji: '🤸', met: 11.0 },
+    ];
+
+    function caloriesPerMinute(met) {
+      return (met * 3.5 * BODY_WEIGHT) / 200;
+    }
+
+    function loadWorkout() {
       const total = SnackStore.getTotal();
       document.getElementById('burnCalories').textContent = total;
 
@@ -75,71 +83,26 @@
         return;
       }
 
-      show('loadingBox');
+      const plan = EXERCISES.map(ex => ({
+        name: ex.name,
+        emoji: ex.emoji,
+        minutes: Math.max(1, Math.round(total / caloriesPerMinute(ex.met)))
+      }));
 
-      try {
-        const prompt = `어떤 사람이 오늘 군것질로 ${total} 칼로리를 섭취했어. 이 ${total} 칼로리를 태우기 위해 할 수 있는 서로 다른 운동 4가지를 추천해줘.
-
-반드시 아래 형식의 유효한 JSON 배열만 반환해줘 (마크다운, 추가 설명 없이):
-[
-  { "name": "빠르게 걷기", "emoji": "🚶", "minutes": 숫자 },
-  { "name": "조깅", "emoji": "🏃", "minutes": 숫자 },
-  { "name": "자전거 타기", "emoji": "🚴", "minutes": 숫자 },
-  { "name": "줄넘기", "emoji": "🤸", "minutes": 숫자 }
-]
-
-각 "minutes" 값은 평균 성인(약 70kg)이 ${total} 칼로리를 태우기 위해 해당 운동을 몇 분 해야 하는지를 하나의 정수로 표현해줘. "name"은 모두 한국어로 작성해줘.`;
-
-        const response = await fetch('https://api.anthropic.com/v1/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 500,
-            messages: [{ role: 'user', content: prompt }]
-          })
-        });
-        if (!response.ok) throw new Error('API error');
-        const data = await response.json();
-        let raw = data.content.map(b => b.type === 'text' ? b.text : '').join('');
-        raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-        const exercises = JSON.parse(raw);
-
-        renderWorkout(exercises);
-      } catch (err) {
-        console.error(err);
-        // 대체 플랜: 대략적인 MET 기반 추정치로 페이지가 계속 작동하도록 함
-        renderWorkout(fallbackPlan(total));
-      } finally {
-        hide('loadingBox');
-      }
+      renderWorkout(plan);
     }
 
     function renderWorkout(exercises) {
       const grid = document.getElementById('workoutGrid');
       grid.innerHTML = exercises.map(ex => `
         <div class="workout-card">
-          <div class="wc-emoji">${ex.emoji || '🏃'}</div>
+          <div class="wc-emoji">${ex.emoji}</div>
           <h3 class="wc-name">${escHtml(ex.name)}</h3>
           <div class="wc-time"><span class="wc-min">${ex.minutes}</span> 분</div>
         </div>
       `).join('');
       show('workoutGrid');
       show('workoutNote');
-    }
-
-    // 분당 소모 칼로리 추정치를 이용한 대체 플랜
-    function fallbackPlan(total) {
-      const rates = [
-        { name: '빠르게 걷기', emoji: '🚶', rate: 5 },
-        { name: '조깅',       emoji: '🏃', rate: 10 },
-        { name: '자전거 타기', emoji: '🚴', rate: 8 },
-        { name: '줄넘기',     emoji: '🤸', rate: 12 },
-      ];
-      return rates.map(r => ({
-        name: r.name, emoji: r.emoji,
-        minutes: Math.max(1, Math.round(total / r.rate))
-      }));
     }
 
     function escHtml(s) {
