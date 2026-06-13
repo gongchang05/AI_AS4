@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Library — BookBrief</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- NAV -->
+  <nav class="navbar">
+    <a href="index.html" class="nav-logo">📚 BookBrief</a>
+    <button class="nav-toggle" onclick="toggleNav()" aria-label="Menu">☰</button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="analyze.html">Analyze</a></li>
+      <li><a href="library.html" class="active">My Library</a></li>
+    </ul>
+  </nav>
+
+  <main class="page-main">
+    <div class="page-header lib-header">
+      <div>
+        <h1>My Library</h1>
+        <p id="bookCount">Loading…</p>
+      </div>
+      <div class="lib-controls">
+        <input type="text" id="searchInput" placeholder="Search by title…" oninput="filterBooks()" class="search-input" />
+      </div>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="empty-state hidden" id="emptyState">
+      <div class="empty-icon">📭</div>
+      <h2>Your library is empty</h2>
+      <p>Analyze a book passage and save it to see it here.</p>
+      <a href="analyze.html" class="btn-primary">Analyze a Book →</a>
+    </div>
+
+    <!-- NO RESULTS -->
+    <div class="empty-state hidden" id="noResults">
+      <div class="empty-icon">🔍</div>
+      <h2>No books found</h2>
+      <p>Try a different search term.</p>
+    </div>
+
+    <!-- GRID -->
+    <div class="lib-grid" id="libGrid"></div>
+  </main>
+
+  <!-- DELETE CONFIRM MODAL -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal">
+      <h3>Remove this book?</h3>
+      <p>This entry will be deleted from your library.</p>
+      <div class="modal-btns">
+        <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>BookBrief · Built with Claude AI · Introduction to AI Programming 2026</p>
+  </footer>
+
+  <script>
+    let allBooks = [];
+    let deleteTargetId = null;
+
+    function toggleNav() {
+      document.getElementById('navLinks').classList.toggle('open');
+    }
+
+    // ── Load library ───────────────────────────────────────────
+    function loadLibrary() {
+      allBooks = JSON.parse(localStorage.getItem('bookbrief_library') || '[]');
+      renderBooks(allBooks);
+    }
+
+    // ── Filter ─────────────────────────────────────────────────
+    function filterBooks() {
+      const q = document.getElementById('searchInput').value.toLowerCase().trim();
+      const filtered = allBooks.filter(b => b.title.toLowerCase().includes(q));
+      renderBooks(filtered, q);
+    }
+
+    // ── Render ─────────────────────────────────────────────────
+    function renderBooks(books, query = '') {
+      const grid = document.getElementById('libGrid');
+      const empty = document.getElementById('emptyState');
+      const noRes = document.getElementById('noResults');
+      const count = document.getElementById('bookCount');
+
+      grid.innerHTML = '';
+      empty.classList.add('hidden');
+      noRes.classList.add('hidden');
+
+      if (allBooks.length === 0) {
+        empty.classList.remove('hidden');
+        count.textContent = '0 books saved';
+        return;
+      }
+
+      count.textContent = `${allBooks.length} book${allBooks.length !== 1 ? 's' : ''} saved`;
+
+      if (books.length === 0 && query) {
+        noRes.classList.remove('hidden');
+        return;
+      }
+
+      books.forEach(book => {
+        const stars = renderStars(book.rating);
+        const keywords = (book.keywords || []).slice(0, 3)
+          .map(k => `<span class="chip chip-sm">${k}</span>`).join('');
+        const date = new Date(book.savedAt).toLocaleDateString('en-US', {
+          year: 'numeric', month: 'short', day: 'numeric'
+        });
+
+        const card = document.createElement('div');
+        card.className = 'lib-card';
+        card.innerHTML = `
+          <div class="lib-card-top">
+            <div class="lib-emoji">${bookEmoji(book.title)}</div>
+            <div class="lib-card-meta">
+              <h3 class="lib-title">${escHtml(book.title)}</h3>
+              <div class="lib-stars">${stars}</div>
+              <span class="lib-date">${date}</span>
+            </div>
+          </div>
+          ${book.review ? `<p class="lib-review">"${escHtml(book.review)}"</p>` : ''}
+          <p class="lib-summary">${escHtml(book.summary)}</p>
+          <div class="chip-row">${keywords}</div>
+          <div class="lib-card-footer">
+            <button class="btn-ghost btn-sm" onclick="toggleRecs('${book.id}')">📚 Recommendations</button>
+            <button class="btn-danger-ghost btn-sm" onclick="openModal('${book.id}')">✕ Delete</button>
+          </div>
+          <ul class="rec-list hidden" id="recs-${book.id}">
+            ${(book.recommendations || []).map((r, i) =>
+              `<li><span class="rec-num">${i + 1}</span>${escHtml(r)}</li>`
+            ).join('')}
+          </ul>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function toggleRecs(id) {
+      const el = document.getElementById(`recs-${id}`);
+      el.classList.toggle('hidden');
+    }
+
+    // ── Delete modal ───────────────────────────────────────────
+    function openModal(id) {
+      deleteTargetId = id;
+      document.getElementById('modalOverlay').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      deleteTargetId = null;
+      document.getElementById('modalOverlay').classList.add('hidden');
+    }
+
+    function confirmDelete() {
+      if (!deleteTargetId) return;
+      allBooks = allBooks.filter(b => b.id !== deleteTargetId);
+      localStorage.setItem('bookbrief_library', JSON.stringify(allBooks));
+      closeModal();
+      renderBooks(allBooks);
+    }
+
+    // ── Helpers ────────────────────────────────────────────────
+    function renderStars(rating) {
+      if (!rating) return '<span class="no-rating">No rating</span>';
+      return Array.from({ length: 5 }, (_, i) =>
+        `<span class="star-display ${i < rating ? 'filled' : ''}">★</span>`
+      ).join('');
+    }
+
+    const EMOJIS = ['📗','📘','📙','📕','📔','📒'];
+    function bookEmoji(title) {
+      const idx = [...title].reduce((a, c) => a + c.charCodeAt(0), 0) % EMOJIS.length;
+      return EMOJIS[idx];
+    }
+
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ── Close modal on overlay click ───────────────────────────
+    document.getElementById('modalOverlay').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+    loadLibrary();
+  </script>
+</body>
+</html>
