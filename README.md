@@ -4,7 +4,7 @@
 
 ## 라이브 데모
 
-🔗 **배포 URL:** *(배포 후 Vercel URL을 여기에 입력하세요)*
+🔗 **배포 URL:** *https://ai-as-4.vercel.app/*
 
 ---
 
